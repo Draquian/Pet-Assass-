@@ -1,0 +1,227 @@
+{
+  "project": "Petó Assassí",
+  "purpose": "Hoja de ruta priorizada para los siguientes pasos de desarrollo de la aplicación.",
+  "source_basis": {
+    "documentation": "documentacion.md",
+    "notes": [
+      "La aplicación funciona 100% offline.",
+      "Existen dos modos: Multidispositivo mediante QR y Un solo móvil.",
+      "El modo Single Device ya contempla gestión de jugadores, consulta de objetivos, estados eliminado/vencedor y resultados.",
+      "El protocolo handoff actual transporta gameId, eliminated, nextTarget y nextItem.",
+      "Los payloads QR están cifrados mediante AES-256-CBC con PKCS#7."
+    ]
+  },
+  "prioritization": {
+    "1": "Finalizar y estabilizar el flujo de partida del modo Un sol mòbil.",
+    "2": "Diseñar e implementar correctamente el historial de asesinatos sin hacer crecer innecesariamente los QR.",
+    "3": "Implementar las últimas palabras y su transporte mediante QR.",
+    "4": "Crear el resumen final completo con supervivientes, vencedores, asesinatos y últimas palabras.",
+    "5": "Revisar el tamaño y robustez de los payloads QR y realizar pruebas de carga.",
+    "6": "Pruebas de regresión, casos límite y limpieza final."
+  },
+  "steps": [
+    {
+      "priority": 1,
+      "id": "single_device_game_management",
+      "title": "Completar la gestión de partida en modo Un sol mòbil",
+      "description": "Convertir el botón 'Tots a punt - Comença la partida!' en el inicio del panel real de gestión de la partida y asegurar que el moderador pueda gestionar todos los jugadores durante la partida.",
+      "tasks": [
+        "Revisar SingleDeviceRevealScreen, SingleDeviceGameScreen, SingleDeviceResultsScreen y los modelos/servicios de estado.",
+        "Mostrar todos los jugadores en el panel de partida.",
+        "Permitir consultar de nuevo el objetivo de cada jugador de forma privada.",
+        "Permitir marcar un jugador como eliminado.",
+        "Permitir marcar un jugador como vencedor.",
+        "Representar claramente los estados vivo, eliminado y vencedor.",
+        "Evitar estados contradictorios entre eliminado, vivo y vencedor.",
+        "Añadir el botón inferior 'La partida ha acabat'.",
+        "Añadir confirmación antes de finalizar si encaja con los patrones actuales de la aplicación."
+      ],
+      "acceptance_criteria": [
+        "El flujo Revelación -> Juego funciona sin duplicar pantallas ni lógica.",
+        "Los objetivos pueden volver a consultarse de forma privada.",
+        "Los estados de los jugadores se actualizan correctamente.",
+        "La aplicación puede finalizar una partida y navegar a resultados."
+      ]
+    },
+    {
+      "priority": 2,
+      "id": "single_device_results_rules",
+      "title": "Implementar correctamente las reglas de resultados",
+      "description": "Establecer una única fuente de verdad para determinar supervivientes y ganadores al finalizar una partida Single Device.",
+      "rules": [
+        "Mostrar siempre todos los jugadores vivos.",
+        "Si queda exactamente un jugador vivo, ese jugador es automáticamente vencedor.",
+        "Si quedan dos o más jugadores vivos, solo son vencedores los jugadores marcados manualmente como vencedores.",
+        "Si quedan dos o más jugadores vivos y nadie está marcado como vencedor, no hay vencedor.",
+        "Los jugadores eliminados nunca cuentan como supervivientes."
+      ],
+      "tasks": [
+        "Centralizar la lógica de cálculo de resultados en un modelo o servicio apropiado.",
+        "Evitar duplicar las reglas dentro de la UI.",
+        "Crear casos de prueba para 0, 1 y varios supervivientes.",
+        "Crear casos de prueba con uno, varios o ningún vencedor marcado."
+      ]
+    },
+    {
+      "priority": 3,
+      "id": "kill_history_model",
+      "title": "Crear el modelo de historial de asesinatos",
+      "description": "Añadir una representación explícita de las relaciones asesino -> víctima para poder reconstruir quién ha matado a quién.",
+      "recommended_model": {
+        "concept": "KillRecord",
+        "fields": [
+          "killer",
+          "victim"
+        ]
+      },
+      "tasks": [
+        "Revisar los modelos actuales antes de crear uno nuevo.",
+        "Registrar una eliminación como killer -> victim.",
+        "Evitar registrar una rendición como asesinato.",
+        "Evitar duplicar KillRecord.",
+        "Mantener el historial localmente cuando el modo lo permita.",
+        "No guardar información innecesaria en el historial."
+      ]
+    },
+    {
+      "priority": 4,
+      "id": "handoff_qr_history",
+      "title": "Ampliar el QR handoff para registrar asesinatos",
+      "description": "Modificar el payload handoff para transportar la información nueva necesaria sin convertir el QR en un historial completo creciente.",
+      "important_design_decision": "No se recomienda enviar todo killHistory acumulado en cada QR. Es preferible que cada handoff transporte el nuevo asesinato y que el historial se acumule localmente.",
+      "recommended_payload_concept": {
+        "type": "handoff",
+        "gameId": "...",
+        "eliminated": "...",
+        "nextTarget": "...",
+        "nextItem": "...",
+        "killer": "..."
+      },
+      "tasks": [
+        "Añadir al handoff la identidad del killer cuando el QR corresponde a una eliminación.",
+        "Al escanear, determinar la relación killer -> eliminated.",
+        "Guardar el nuevo KillRecord localmente.",
+        "Mantener las validaciones actuales de gameId y objetivo legítimo.",
+        "No añadir killer cuando el handoff corresponde a una rendición.",
+        "Mantener AES-256-CBC y el flujo de cifrado actual."
+      ]
+    },
+    {
+      "priority": 5,
+      "id": "last_words",
+      "title": "Implementar las últimas palabras",
+      "description": "Permitir que un jugador eliminado escriba un mensaje opcional y conservarlo para mostrarlo al final.",
+      "tasks": [
+        "Añadir un campo de últimas palabras al estado/modelo adecuado.",
+        "Crear una interfaz para introducirlas al ser eliminado.",
+        "Permitir dejar el campo vacío.",
+        "No mostrar las últimas palabras durante la partida a jugadores que no corresponda.",
+        "Incluirlas en el handoff de una eliminación cuando corresponda.",
+        "Conservarlas localmente en Single Device sin depender de QR."
+      ],
+      "recommended_payload_field": "lastWords"
+    },
+    {
+      "priority": 6,
+      "id": "final_results_screen",
+      "title": "Crear el resumen final completo",
+      "description": "Ampliar SingleDeviceResultsScreen y la pantalla final equivalente del modo multidispositivo para mostrar toda la información relevante de la partida.",
+      "sections": [
+        "Jugadores supervivientes",
+        "Vencedor o vencedores",
+        "Quién ha matat a qui",
+        "Últimes paraules"
+      ],
+      "tasks": [
+        "Mostrar siempre los supervivientes.",
+        "Mostrar correctamente el ganador único cuando queda un solo superviviente.",
+        "Mostrar varios ganadores cuando corresponda.",
+        "Mostrar 'No hi ha cap vencedor' cuando no exista ganador.",
+        "Mostrar el historial killer -> victim.",
+        "Mostrar las últimas palabras de los eliminados que las hayan escrito.",
+        "No mostrar bloques vacíos innecesarios.",
+        "No inventar información si el historial está incompleto."
+      ]
+    },
+    {
+      "priority": 7,
+      "id": "qr_capacity_testing",
+      "title": "Medir y probar los límites reales de los QR",
+      "description": "Determinar el tamaño real de los payloads de la aplicación y comprobar que los QR siguen siendo fiables en teléfonos reales.",
+      "recommended_target": {
+        "practical_player_design_target": "Hasta aproximadamente 100 jugadores, sujeto a pruebas reales.",
+        "handoff_strategy": "Mantener el tamaño del handoff prácticamente constante; no transportar el historial completo en cada QR.",
+        "init_qr": "Medir específicamente el tamaño del QR inicial, ya que contiene la lista completa de jugadores."
+      },
+      "tasks": [
+        "Medir tamaño JSON antes del cifrado.",
+        "Medir tamaño después de AES-256-CBC.",
+        "Medir tamaño después de Base64 si se utiliza.",
+        "Generar pruebas con 10, 50, 100, 200 y 500 jugadores.",
+        "Comprobar lectura con teléfonos reales.",
+        "Comprobar diferentes niveles de corrección de errores si la librería los permite.",
+        "Registrar el punto donde el QR deja de ser cómodo o fiable de escanear."
+      ]
+    },
+    {
+      "priority": 8,
+      "id": "regression_and_edge_cases",
+      "title": "Pruebas de regresión y casos límite",
+      "description": "Asegurar que las nuevas funcionalidades no rompen el sistema existente.",
+      "test_cases": [
+        "Partida Single Device con un único jugador.",
+        "Partida Single Device con dos jugadores.",
+        "Partida Single Device con varios supervivientes.",
+        "Partida con varios vencedores.",
+        "Partida sin vencedor marcado.",
+        "Jugador eliminado sin últimas palabras.",
+        "Jugador eliminado con últimas palabras.",
+        "Rendición sin asesinato.",
+        "Varios handoffs consecutivos.",
+        "Intento de escanear un QR de otra partida.",
+        "Intento de escanear un QR cuyo eliminado no es el objetivo actual.",
+        "Historial con posibles duplicados.",
+        "Historial incompleto.",
+        "Partida multidispositivo completa hasta el cierre del ciclo."
+      ]
+    },
+    {
+      "priority": 9,
+      "id": "code_cleanup_and_documentation",
+      "title": "Limpieza y actualización de documentación",
+      "description": "Una vez estabilizado el desarrollo, actualizar la documentación para que refleje el comportamiento real de la aplicación.",
+      "tasks": [
+        "Actualizar el flujo Single Device.",
+        "Actualizar el modelo de datos.",
+        "Actualizar el payload handoff.",
+        "Documentar KillRecord.",
+        "Documentar lastWords.",
+        "Documentar las reglas finales de victoria.",
+        "Documentar las decisiones relacionadas con el tamaño de los QR.",
+        "Eliminar código duplicado o lógica obsoleta.",
+        "Verificar que los nombres de pantallas y modelos de la documentación coinciden con el proyecto real."
+      ]
+    }
+  ],
+  "important_architecture_decisions": [
+    "Mantener la aplicación 100% offline.",
+    "No introducir servidor central.",
+    "Mantener AES-256-CBC para los payloads QR salvo que una revisión del código indique una necesidad técnica distinta.",
+    "No enviar el historial completo de asesinatos en cada handoff si puede evitarse.",
+    "Preferir un KillRecord incremental por eliminación.",
+    "Mantener separada la lógica de resultados de la UI.",
+    "No tratar una rendición como un asesinato.",
+    "Mantener compatibilidad entre el modo Single Device y el modo Multidispositivo sin forzar QR en Single Device."
+  ],
+  "recommended_development_order": [
+    "1. Gestión de partida Single Device",
+    "2. Reglas de resultados",
+    "3. Modelo KillRecord",
+    "4. Handoff con registro incremental del asesinato",
+    "5. Últimas palabras",
+    "6. Pantalla final completa",
+    "7. Pruebas de capacidad QR",
+    "8. Pruebas de regresión",
+    "9. Documentación y limpieza"
+  ]
+}

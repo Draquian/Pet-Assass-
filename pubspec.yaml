@@ -1,0 +1,52 @@
+name: peto_assessi
+description: Juego de eliminación tipo "asesino" offline, coordinado por códigos QR.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Generar códigos QR en pantalla
+  qr_flutter: ^4.1.0
+
+  # Escanear códigos QR con la cámara
+  mobile_scanner: ^6.0.10
+
+  # Persistencia local (sin backend, sin internet)
+  shared_preferences: ^2.3.2
+
+  # Cifrado AES del contenido de los QR
+  encrypt: ^5.0.3
+  crypto: ^3.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - lib/logo/game_icon.jpeg
+    - lib/logo/Logo.png
+    - lib/logo/screen_logo.jpeg
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "lib/logo/game_icon.jpeg"
+  adaptive_icon_background: "#FFFFFF"  # transparente
+  adaptive_icon_foreground: "lib/logo/game_icon.jpeg"
+  remove_alpha_ios: false
+  web:
+    generate: false
+  windows:
+    generate: false
